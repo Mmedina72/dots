@@ -133,6 +133,18 @@ setup_linux() {
   if [[ "$PKG_MANAGER" != "unknown" ]]; then
     echo "📦 Detected package manager: $PKG_MANAGER"
     
+    # Ensure ~/.local/bin is in PATH
+    mkdir -p "$HOME/.local/bin"
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+      export PATH="$HOME/.local/bin:$PATH"
+      # Add to shell config files if not already present
+      for shell_file in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+        if [[ -f "$shell_file" ]] && ! grep -q '\.local/bin' "$shell_file" 2>/dev/null; then
+          echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_file"
+        fi
+      done
+    fi
+    
     # Update package lists
     echo "🔄 Updating package lists..."
     $UPDATE_CMD
@@ -144,26 +156,243 @@ setup_linux() {
     fi
   fi
 
-  # --- Install Homebrew for Linux (optional) ---
-  if ! command -v brew >/dev/null 2>&1; then
-    read -p "🍺 Install Homebrew for Linux? (y/N): " install_brew
-    if [[ "$install_brew" =~ ^[Yy]$ ]]; then
-      echo "🍺 Installing Homebrew for Linux..."
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # --- Install packages from Brewfile using native package manager ---
+  install_linux_packages() {
+    local pkg_manager=$1
+    local install_cmd=$2
+    
+    echo "📦 Installing packages using $pkg_manager..."
+    
+    # Package mappings: Homebrew -> Linux package names
+    # Common packages available in most distros
+    declare -A pkg_map_apt=(
+      ["bat"]="bat"
+      ["eza"]="eza"
+      ["fzf"]="fzf"
+      ["git"]="git"
+      ["lazygit"]="lazygit"
+      ["zoxide"]="zoxide"
+      ["stow"]="stow"
+    )
+    
+    declare -A pkg_map_dnf=(
+      ["bat"]="bat"
+      ["eza"]="eza"
+      ["fzf"]="fzf"
+      ["git"]="git"
+      ["lazygit"]="lazygit"
+      ["zoxide"]="zoxide"
+      ["stow"]="stow"
+    )
+    
+    declare -A pkg_map_pacman=(
+      ["bat"]="bat"
+      ["eza"]="eza"
+      ["fzf"]="fzf"
+      ["git"]="git"
+      ["lazygit"]="lazygit"
+      ["zoxide"]="zoxide"
+      ["stow"]="stow"
+    )
+    
+    # Select the appropriate package map
+    case $pkg_manager in
+      apt)
+        declare -n pkg_map=pkg_map_apt
+        ;;
+      dnf|yum)
+        declare -n pkg_map=pkg_map_dnf
+        ;;
+      pacman)
+        declare -n pkg_map=pkg_map_pacman
+        ;;
+      zypper)
+        # zypper uses similar names, try apt mapping
+        declare -n pkg_map=pkg_map_apt
+        ;;
+      *)
+        echo "⚠️  Unsupported package manager for automatic package installation"
+        return
+        ;;
+    esac
+    
+    # Read Brewfile and install packages
+    if [[ -f "$DOTS_DIR/Brewfile" ]]; then
+      local packages_to_install=()
       
-      # Add brew to PATH
-      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-      echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.bashrc"
-      echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.zprofile"
+      while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip comments, empty lines, taps, casks, and vscode extensions
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// }" ]] && continue
+        [[ "$line" =~ ^[[:space:]]*tap ]] && continue
+        [[ "$line" =~ ^[[:space:]]*cask ]] && continue
+        [[ "$line" =~ ^[[:space:]]*vscode ]] && continue
+        
+        # Extract package name from "brew "package""
+        if [[ "$line" =~ brew[[:space:]]+\"([^\"]+)\" ]]; then
+          local brew_pkg="${BASH_REMATCH[1]}"
+          # Handle packages with slashes (like felixkratz/formulae/borders)
+          brew_pkg="${brew_pkg##*/}"
+          
+          # Check if package is in our mapping
+          if [[ -n "${pkg_map[$brew_pkg]}" ]]; then
+            local linux_pkg="${pkg_map[$brew_pkg]}"
+            # Check if already installed
+            if ! command -v "$brew_pkg" >/dev/null 2>&1; then
+              packages_to_install+=("$linux_pkg")
+            else
+              echo "✅ $brew_pkg is already installed"
+            fi
+          else
+            echo "⚠️  No mapping found for: $brew_pkg (may need manual installation)"
+          fi
+        fi
+      done < "$DOTS_DIR/Brewfile"
+      
+      # Install packages (try one by one to handle failures gracefully)
+      if [[ ${#packages_to_install[@]} -gt 0 ]]; then
+        echo "📦 Installing packages..."
+        local failed_packages=()
+        for pkg in "${packages_to_install[@]}"; do
+          echo "  → Installing $pkg..."
+          if $install_cmd "$pkg" 2>/dev/null; then
+            echo "  ✅ $pkg installed successfully"
+          else
+            echo "  ⚠️  $pkg not available in repositories, will try alternative method"
+            failed_packages+=("$pkg")
+          fi
+        done
+        
+        # Try alternative installation methods for failed packages
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+          echo "🔧 Attempting alternative installation methods for: ${failed_packages[*]}"
+          install_fallback_packages "${failed_packages[@]}"
+        fi
+      else
+        echo "✅ All mappable packages are already installed"
+      fi
+      
+      # Install packages that typically need alternative methods
+      install_special_packages
+    else
+      echo "⚠️  No Brewfile found at $DOTS_DIR/Brewfile"
     fi
-  fi
-
-  # --- Brewfile setup (if Homebrew is installed) ---
-  if command -v brew >/dev/null 2>&1 && [[ -f "$DOTS_DIR/Brewfile" ]]; then
-    echo "📦 Installing packages from Brewfile..."
-    brew bundle --file="$DOTS_DIR/Brewfile"
-  elif [[ -f "$DOTS_DIR/Brewfile" ]]; then
-    echo "⚠️ Brewfile found but Homebrew not installed — skipping Homebrew bundle."
+  }
+  
+  # Fallback installation for packages not in repositories
+  install_fallback_packages() {
+    local packages=("$@")
+    
+    for pkg in "${packages[@]}"; do
+      case $pkg in
+        bat)
+          echo "  📦 Installing bat via cargo or downloading binary..."
+          if command -v cargo >/dev/null 2>&1; then
+            cargo install bat 2>/dev/null && echo "  ✅ bat installed via cargo" || echo "  ⚠️  Failed to install bat"
+          else
+            echo "  ⚠️  Install Rust/cargo to install bat, or download from: https://github.com/sharkdp/bat"
+          fi
+          ;;
+        eza)
+          echo "  📦 Installing eza via cargo or downloading binary..."
+          if command -v cargo >/dev/null 2>&1; then
+            cargo install eza 2>/dev/null && echo "  ✅ eza installed via cargo" || echo "  ⚠️  Failed to install eza"
+          else
+            echo "  ⚠️  Install Rust/cargo to install eza, or download from: https://github.com/eza-community/eza"
+          fi
+          ;;
+        lazygit)
+          echo "  📦 Installing lazygit..."
+          local lazygit_version="0.41.0"
+          local arch=$(uname -m)
+          case $arch in
+            x86_64) arch="x86_64" ;;
+            aarch64|arm64) arch="arm64" ;;
+            *) arch="x86_64" ;;
+          esac
+          local lazygit_url="https://github.com/jesseduffield/lazygit/releases/download/v${lazygit_version}/lazygit_${lazygit_version}_Linux_${arch}.tar.gz"
+          if curl -fsSL "$lazygit_url" -o /tmp/lazygit.tar.gz 2>/dev/null; then
+            mkdir -p "$HOME/.local/bin"
+            tar -xzf /tmp/lazygit.tar.gz -C "$HOME/.local/bin" lazygit 2>/dev/null && {
+              chmod +x "$HOME/.local/bin/lazygit"
+              echo "  ✅ lazygit installed to ~/.local/bin"
+            } || echo "  ⚠️  Failed to extract lazygit"
+            rm -f /tmp/lazygit.tar.gz
+          else
+            echo "  ⚠️  Failed to download lazygit. Install manually from: https://github.com/jesseduffield/lazygit"
+          fi
+          ;;
+        zoxide)
+          echo "  📦 Installing zoxide..."
+          if command -v cargo >/dev/null 2>&1; then
+            cargo install zoxide 2>/dev/null && echo "  ✅ zoxide installed via cargo" || echo "  ⚠️  Failed to install zoxide"
+          else
+            curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
+          fi
+          ;;
+        fzf)
+          echo "  📦 Installing fzf..."
+          if [[ -d "$HOME/.fzf" ]]; then
+            echo "  ✅ fzf already installed"
+          else
+            git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf" 2>/dev/null && {
+              "$HOME/.fzf/install" --bin --no-update-rc 2>/dev/null
+              echo "  ✅ fzf installed"
+            } || echo "  ⚠️  Failed to install fzf"
+          fi
+          ;;
+        *)
+          echo "  ⚠️  No fallback method for $pkg. Please install manually."
+          ;;
+      esac
+    done
+  }
+  
+  # Install packages that need special installation methods
+  install_special_packages() {
+    echo "🔧 Installing packages that require special installation methods..."
+    
+    # Starship prompt
+    if ! command -v starship >/dev/null 2>&1; then
+      echo "📦 Installing Starship..."
+      curl -sS https://starship.rs/install.sh | sh -s -- -y
+    else
+      echo "✅ Starship is already installed"
+    fi
+    
+    # fnm (Fast Node Manager) - alternative to nvm
+    if ! command -v fnm >/dev/null 2>&1; then
+      echo "📦 Installing fnm..."
+      curl -fsSL https://fnm.vercel.app/install | bash
+      # Source fnm for current session
+      export PATH="$HOME/.local/share/fnm:$PATH"
+      eval "$(fnm env --use-on-cd)"
+    else
+      echo "✅ fnm is already installed"
+    fi
+    
+    # mise (formerly rtx) - universal runtime manager
+    if ! command -v mise >/dev/null 2>&1; then
+      echo "📦 Installing mise..."
+      curl https://mise.run | sh
+      # Add to PATH for current session
+      export PATH="$HOME/.local/bin:$PATH"
+    else
+      echo "✅ mise is already installed"
+    fi
+    
+    # borders (from felixkratz/formulae) - may need manual installation
+    if ! command -v borders >/dev/null 2>&1; then
+      echo "⚠️  'borders' not found. You may need to install it manually from:"
+      echo "   https://github.com/felixkratz/borders"
+    fi
+  }
+  
+  # Run package installation
+  if [[ "$PKG_MANAGER" != "unknown" ]]; then
+    install_linux_packages "$PKG_MANAGER" "$INSTALL_CMD"
+  else
+    echo "⚠️  Cannot install packages automatically without a detected package manager"
   fi
 }
 
