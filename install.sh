@@ -219,35 +219,66 @@ setup_linux() {
     # Read Brewfile and install packages
     if [[ -f "$DOTS_DIR/Brewfile" ]]; then
       local packages_to_install=()
+      local skipped_macos_packages=()
       
       while IFS= read -r line || [[ -n "$line" ]]; do
-        # Skip comments, empty lines, taps, casks, and vscode extensions
+        # Skip comments and empty lines
         [[ "$line" =~ ^[[:space:]]*# ]] && continue
         [[ -z "${line// }" ]] && continue
-        [[ "$line" =~ ^[[:space:]]*tap ]] && continue
-        [[ "$line" =~ ^[[:space:]]*cask ]] && continue
-        [[ "$line" =~ ^[[:space:]]*vscode ]] && continue
+        
+        # Skip taps (Homebrew-specific)
+        if [[ "$line" =~ ^[[:space:]]*tap ]]; then
+          continue
+        fi
+        
+        # Skip specific macOS-only casks (aerospace, raycast, appcleaner)
+        if [[ "$line" =~ ^[[:space:]]*cask[[:space:]]+\"([^\"]+)\" ]]; then
+          local cask_name="${BASH_REMATCH[1]}"
+          local macos_only_casks=("aerospace" "raycast" "appcleaner")
+          if printf '%s\n' "${macos_only_casks[@]}" | grep -q "^${cask_name}$"; then
+            skipped_macos_packages+=("$cask_name")
+            continue
+          fi
+          # Other casks are allowed to continue (they may have Linux equivalents)
+        fi
+        
+        # Skip vscode extensions (handled separately if needed)
+        if [[ "$line" =~ ^[[:space:]]*vscode ]]; then
+          continue
+        fi
         
         # Extract package name from "brew "package""
         if [[ "$line" =~ brew[[:space:]]+\"([^\"]+)\" ]]; then
           local brew_pkg="${BASH_REMATCH[1]}"
           # Handle packages with slashes (like felixkratz/formulae/borders)
-          brew_pkg="${brew_pkg##*/}"
+          local brew_pkg_short="${brew_pkg##*/}"
+          
+          # Skip known macOS-only packages (even if listed as brew packages)
+          local macos_only_packages=("aerospace" "raycast" "appcleaner")
+          if printf '%s\n' "${macos_only_packages[@]}" | grep -q "^${brew_pkg_short}$"; then
+            skipped_macos_packages+=("$brew_pkg")
+            continue
+          fi
           
           # Check if package is in our mapping
-          if [[ -n "${pkg_map[$brew_pkg]}" ]]; then
-            local linux_pkg="${pkg_map[$brew_pkg]}"
+          if [[ -n "${pkg_map[$brew_pkg_short]}" ]]; then
+            local linux_pkg="${pkg_map[$brew_pkg_short]}"
             # Check if already installed
-            if ! command -v "$brew_pkg" >/dev/null 2>&1; then
+            if ! command -v "$brew_pkg_short" >/dev/null 2>&1; then
               packages_to_install+=("$linux_pkg")
             else
-              echo "✅ $brew_pkg is already installed"
+              echo "✅ $brew_pkg_short is already installed"
             fi
           else
-            echo "⚠️  No mapping found for: $brew_pkg (may need manual installation)"
+            echo "⚠️  No mapping found for: $brew_pkg_short (may need manual installation)"
           fi
         fi
       done < "$DOTS_DIR/Brewfile"
+      
+      # Show skipped macOS-only packages
+      if [[ ${#skipped_macos_packages[@]} -gt 0 ]]; then
+        echo "🍎 Skipped macOS-only packages: ${skipped_macos_packages[*]}"
+      fi
       
       # Install packages (try one by one to handle failures gracefully)
       if [[ ${#packages_to_install[@]} -gt 0 ]]; then
