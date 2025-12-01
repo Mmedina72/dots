@@ -102,10 +102,10 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-eval "$(/opt/homebrew/bin/brew shellenv)"
+#eval "$(/opt/homebrew/bin/brew shellenv)"
 #eval "$(oh-my-posh init zsh --config $(brew --prefix oh-my-posh)/themes/amro.omp.json)"
 eval "$(zoxide init zsh)"
-eval "$(fnm env --use-on-cd --shell zsh)"
+#eval "$(fnm env --use-on-cd --shell zsh)"
 
 eval "$(starship init zsh)"
 #export NVM_DIR="$HOME/.nvm"
@@ -118,6 +118,8 @@ alias brewup="brew update && brew upgrade"
 
 alias c="cursor"
 alias cd="z"
+
+alias t="tmux"
 
 eval "$(mise activate zsh)"
 
