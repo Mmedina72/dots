@@ -1,340 +1,242 @@
+# Minimalist Starship Config
+# Clean prompt with useful context-aware features
+
 format = """
-[╭─](bold fg:#60a5fa)\
-$os\
-$sudo\
-$username\
-$hostname\
 $directory\
 $git_branch\
-$git_commit\
-$git_state\
 $git_status\
-$git_metrics\
-$fill\
-$c\
+$git_state\
 $python\
-$lua\
 $nodejs\
-$golang\
-$haskell\
 $rust\
-$ruby\
-$conda\
-$terraform\
-$kubernetes\
-$package\
-$aws\
+$golang\
 $docker_context\
-$jobs\
-$status\
+$kubernetes\
 $cmd_duration\
-$time\
-$battery\
 $line_break\
-[╰─](bold fg:#60a5fa)\
 $character"""
 
 add_newline = true
-palette = 'vibrant'
+
+# ===== Core Modules =====
 
 [directory]
-style = 'bold fg:#60a5fa bg:#3f3f46'
-format = '[ $path ]($style)'
-truncation_length = 3
+style = 'bold cyan'
+format = '[$path]($style)[$read_only]($read_only_style) '
+truncation_length = 4
 truncation_symbol = '…/'
 truncate_to_repo = true
 read_only = ' 󰌾'
-read_only_style = 'fg:#f87171'
+read_only_style = 'red'
+home_symbol = '~'
 
 [directory.substitutions]
-'Documents' = '󰈙 '
-'Downloads' = '󰗀 '
-'Music' = '󰝚 '
-'Pictures' = '󰄛 '
-'Desktop' = '󰀄 '
-'code' = '󰨞 '
-'dots' = '󰟀 '
+'Documents' = '󰈙 Documents'
+'Downloads' = '󰇚 Downloads'
+'Desktop' = '󰇄 Desktop'
+'Pictures' = '󰋩 Pictures'
+'Music' = '󰝚 Music'
+'Videos' = '󰕧 Videos'
+'projects' = '󰲋 projects'
+'dots' = ' dots'
+'work' = '󰒍 work'
+'.config' = ' config'
+
+[character]
+success_symbol = '[❯](bold green)'
+error_symbol = '[❯](bold red)'
+vimcmd_symbol = '[❮](bold purple)'
+
+# ===== Git =====
 
 [git_branch]
-style = 'bold fg:#4ade80 bg:#3f3f46'
-symbol = '󰘬 '
-format = '[ $symbol$branch ]($style)'
-diverged = '⇅ '
+style = 'bold purple'
+symbol = ' '
+format = '[$symbol$branch]($style) '
+truncation_length = 25
+truncation_symbol = '…'
 
-[git_commit]
-style = 'bold fg:#a78bfa bg:#3f3f46'
-symbol = '󰜘 '
-format = '[ $symbol$hash ]($style)'
-only_detached = false
-tag_symbol = '󰓹 '
-tag_disabled = false
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = 'bold'
+conflicted = '[!](bold red)'
+ahead = '[⇡${count}](green)'
+behind = '[⇣${count}](yellow)'
+diverged = '[⇕${count}](red)'
+untracked = '[?${count}](blue)'
+stashed = '[*${count}](cyan)'
+modified = '[~${count}](yellow)'
+staged = '[+${count}](green)'
+renamed = '[»${count}](cyan)'
+deleted = '[-${count}](red)'
+ignore_submodules = true
 
 [git_state]
-style = 'bold fg:#fbbf24 bg:#3f3f46'
-format = '[\($state( $progress_current/$progress_total)\)]($style) '
+style = 'bold yellow'
+format = '\([$state( $progress_current/$progress_total)]($style)\) '
 rebase = 'REBASING'
 merge = 'MERGING'
 revert = 'REVERTING'
-cherry_pick = 'CHERRY-PICKING'
+cherry_pick = 'PICKING'
 bisect = 'BISECTING'
-am = 'AM'
-am_or_rebase = 'AM/REBASE'
-
-[git_status]
-style = 'bold fg:#4ade80 bg:#3f3f46'
-format = '([$all_status$ahead_behind]($style) )'
-conflicted = '󰅽${count} '
-up_to_date = '󰄬 '
-untracked = '󰝥${count} '
-ahead = '󰐕${count} '
-behind = '󰍁${count} '
-diverged = '󰹺${count} '
-stashed = '󰆍${count} '
-modified = '󰏫${count} '
-staged = '󰄬${count} '
-renamed = '󰁔${count} '
-deleted = '󰆐${count} '
 
 [git_metrics]
-style = 'bold fg:#22d3ee bg:#3f3f46'
-format = '[ +$added -$deleted ]($style)'
-added_style = 'bold fg:#4ade80'
-deleted_style = 'bold fg:#f87171'
-only_nonzero_diffs = true
+disabled = true
 
-[username]
-style_user = 'bold fg:#60a5fa bg:#3f3f46'
-style_root = 'bold fg:#f87171 bg:#3f3f46'
-format = '[ $user ]($style)'
-show_always = false
-disabled = false
+[git_commit]
+style = 'bold purple'
+format = '[$hash$tag]($style) '
+commit_hash_length = 7
+only_detached = true
+tag_symbol = ' 󰓹 '
 
-[hostname]
-style = 'bold fg:#a78bfa bg:#3f3f46'
-ssh_only = true
-format = '[ @$hostname ]($style)'
-disabled = false
-
-[fill]
-symbol = ' '
+# ===== Languages (only show when detected) =====
 
 [python]
-style = 'bold fg:#22d3ee bg:#3f3f46'
-symbol = '󰌠 '
-format = '[ $symbol$pyenv_prefix($version )($virtualenv )]($style)'
-pyenv_version_name = true
-pyenv_prefix = ''
-
-[lua]
-style = 'bold fg:#60a5fa bg:#3f3f46'
-symbol = '󰢱 '
-format = '[ $symbol($version )]($style)'
+style = 'bold yellow'
+symbol = '󰌠'
+format = '[$symbol $version( \($virtualenv\))]($style) '
+detect_extensions = ['py']
+detect_files = ['requirements.txt', 'pyproject.toml', 'Pipfile', '.python-version']
 
 [nodejs]
-style = 'bold fg:#4ade80 bg:#3f3f46'
-symbol = '󰎙 '
-format = '[ $symbol($version )]($style)'
-
-[golang]
-style = 'bold fg:#60a5fa bg:#3f3f46'
-symbol = '󰟓 '
-format = '[ $symbol($version )]($style)'
-
-[haskell]
-style = 'bold fg:#a78bfa bg:#3f3f46'
-symbol = '󰛧 '
-format = '[ $symbol($version )]($style)'
+style = 'bold green'
+symbol = '󰎙'
+format = '[$symbol $version]($style) '
+detect_extensions = ['js', 'ts', 'mjs', 'cjs']
+detect_files = ['package.json', '.nvmrc']
 
 [rust]
-style = 'bold fg:#fbbf24 bg:#3f3f46'
-symbol = '󰌢 '
-format = '[ $symbol($version )]($style)'
+style = 'bold #f74c00'
+symbol = '󱘗'
+format = '[$symbol $version]($style) '
+
+[golang]
+style = 'bold cyan'
+symbol = '󰟓'
+format = '[$symbol $version]($style) '
+
+[lua]
+style = 'bold blue'
+symbol = '󰢱'
+format = '[$symbol $version]($style) '
 
 [ruby]
-style = 'bold fg:#f87171 bg:#3f3f46'
-symbol = '󰴭 '
-format = '[ $symbol($version )]($style)'
+style = 'bold red'
+symbol = '󰴭'
+format = '[$symbol $version]($style) '
+
+[java]
+style = 'bold #f89820'
+symbol = '󰬷'
+format = '[$symbol $version]($style) '
+
+[c]
+style = 'bold #599eff'
+symbol = '󰙲'
+format = '[$symbol $version]($style) '
+
+[swift]
+style = 'bold #f05138'
+symbol = '󰛥'
+format = '[$symbol $version]($style) '
+
+[kotlin]
+style = 'bold #7f52ff'
+symbol = '󱈙'
+format = '[$symbol $version]($style) '
+
+[php]
+style = 'bold #777bb4'
+symbol = '󰌟'
+format = '[$symbol $version]($style) '
+
+[haskell]
+disabled = true
 
 [conda]
-style = 'bold fg:#22d3ee bg:#3f3f46'
-symbol = '󰔶 '
-format = '[ $symbol($environment )]($style)'
-ignore_base = true
-
-[terraform]
-style = 'bold fg:#7b42bc bg:#3f3f46'
-symbol = '󰕋 '
-format = '[ $symbol($workspace )]($style)'
-disabled = false
-
-[kubernetes]
-style = 'bold fg:#326ce5 bg:#3f3f46'
-symbol = '󰠳 '
-format = '[ $symbol($context \($namespace\) )]($style)'
-disabled = false
-detect_files = ['k8s']
-detect_folders = ['k8s']
-detect_extensions = ['yaml', 'yml']
+disabled = true
 
 [package]
-style = 'bold fg:#a78bfa bg:#3f3f46'
-symbol = '󰏗 '
-format = '[ $symbol($version )]($style)'
+disabled = true
 
-[aws]
-symbol = '󰸏 '
-style = 'bold fg:#fbbf24 bg:#3f3f46'
-format = '[ $symbol($profile )(\[$duration\] )]($style)'
+# ===== DevOps (only show when relevant) =====
 
 [docker_context]
-symbol = '󰡨 '
-style = 'bold fg:#22d3ee bg:#3f3f46'
-format = '[ $symbol$path ]($style)'
-detect_files = ['docker-compose.yml', 'docker-compose.yaml', 'Dockerfile']
-detect_extensions = ['Dockerfile']
+symbol = ' '
+style = 'blue'
+format = '[$symbol$context]($style) '
+only_with_files = true
+detect_files = ['docker-compose.yml', 'docker-compose.yaml', 'Dockerfile', 'compose.yml', 'compose.yaml']
 
-[jobs]
-symbol = '󰜺 '
-style = 'bold fg:#f87171 bg:#3f3f46'
-number_threshold = 1
-format = '[ $symbol$number ]($style)'
+[kubernetes]
+style = 'blue'
+symbol = '󰠳 '
+format = '[$symbol$context]($style) '
+disabled = false
+detect_files = ['k8s.yaml', 'k8s.yml', 'kustomization.yaml']
+detect_folders = ['k8s', '.kube', 'kubernetes', 'helm']
+detect_env_vars = ['KUBECONFIG']
+
+[terraform]
+disabled = true
+
+[aws]
+disabled = true
+
+# ===== Utilities =====
 
 [cmd_duration]
-min_time = 2_000
-style = 'bold fg:#fbbf24 bg:#3f3f46'
-format = '[ 󱎫 $duration ]($style)'
+min_time = 3_000
+style = 'yellow'
+format = '[took $duration]($style) '
 show_milliseconds = false
-show_notifications = false
 
-[battery]
-style = 'bold fg:#4ade80 bg:#3f3f46'
-full_symbol = '󰁹 '
-charging_symbol = '󰂄 '
-discharging_symbol = '󰂃 '
-unknown_symbol = '󰁽 '
-empty_symbol = '󰂎 '
-format = '[ $symbol$percentage ]($style)'
-display = [{ threshold = 10, style = 'bold fg:#f87171' }]
-disabled = false
+[jobs]
+symbol = '+'
+style = 'blue'
+format = '[$symbol$number]($style) '
+number_threshold = 1
 
-[time]
-style = 'bold fg:#a78bfa bg:#3f3f46'
-format = '[ 󰥔 $time ]($style)'
-time_format = '%H:%M'
-disabled = false
-
-[character]
-success_symbol = '[❯](bold fg:#4ade80)'
-error_symbol = '[❯](bold fg:#f87171)'
-vimcmd_symbol = '[V](bold fg:#a78bfa)'
-
-[palettes.vibrant]
-dark_blue = '#60a5fa'
-blue = '#60a5fa'
-teal = '#22d3ee'
-red = '#f87171'
-orange = '#fbbf24'
-green = '#4ade80'
-yellow = '#fbbf24'
-purple = '#a78bfa'
-cyan = '#22d3ee'
-gray = '#52525b'
-black = '#1e1e2e'
-white = '#e4e4e7'
-
-[palettes.nord]
-dark_blue = '#5E81AC'
-blue = '#81A1C1'
-teal = '#88C0D0'
-red = '#BF616A'
-orange = '#D08770'
-green = '#A3BE8C'
-yellow = '#EBCB8B'
-purple = '#B48EAD'
-gray = '#434C5E'
-black = '#2E3440'
-white='#D8DEE9'
-
-[palettes.onedark]
-dark_blue='#61afef'
-blue='#56b6c2'
-red='#e06c75'
-green='#98c379'
-purple='#c678dd'
-cyan='#56b6c2'
-orange='#be5046'
-yellow='#e5c07b'
-gray='#828997'
-white ='#abb2bf'
-black='#2c323c'
-
-# OS indicator
-[os]
-format = '[ $symbol]($style)'
-style = 'bold fg:#cdd6f4 bg:#3f3f46'
-disabled = false
-
-[os.symbols]
-Macos = '󰀵'
-Linux = '󰌽'
-Ubuntu = '󰕈'
-Debian = '󰣚'
-Arch = '󰣇'
-Fedora = '󰣛'
-Windows = '󰍲'
-
-# Sudo indicator
-[sudo]
-format = '[ 󰞀 ]($style)'
-style = 'bold fg:#f87171 bg:#3f3f46'
-disabled = false
-
-# C/C++ module
-[c]
-format = '[ $symbol($version(-$name) )]($style)'
-style = 'bold fg:#60a5fa bg:#3f3f46'
-symbol = '󰙲 '
-detect_files = ['*.c', '*.h', '*.cpp', '*.hpp', 'CMakeLists.txt']
-detect_extensions = ['c', 'h', 'cpp', 'hpp', 'cc', 'cxx']
-
-# Exit status
 [status]
-format = '[ $symbol$status ]($style)'
-style = 'bold fg:#f87171 bg:#3f3f46'
-symbol = '󰅙 '
-success_symbol = ''
-not_executable_symbol = '󰂭 '
-not_found_symbol = '󰍉 '
-sigint_symbol = '󰟾 '
-signal_symbol = '󱐋 '
+style = 'red'
+symbol = '✘ '
+format = '[$symbol$status]($style) '
 disabled = false
 map_symbol = true
 
-# Catppuccin Mocha palette (for consistency with Ghostty)
-[palettes.catppuccin-mocha]
-rosewater = '#f5e0dc'
-flamingo = '#f2cdcd'
-pink = '#f5c2e7'
-mauve = '#cba6f7'
-red = '#f38ba8'
-maroon = '#eba0ac'
-peach = '#fab387'
-yellow = '#f9e2af'
-green = '#a6e3a1'
-teal = '#94e2d5'
-sky = '#89dceb'
-sapphire = '#74c7ec'
-blue = '#89b4fa'
-lavender = '#b4befe'
-text = '#cdd6f4'
-subtext1 = '#bac2de'
-subtext0 = '#a6adc8'
-overlay2 = '#9399b2'
-overlay1 = '#7f849c'
-overlay0 = '#6c7086'
-surface2 = '#585b70'
-surface1 = '#45475a'
-surface0 = '#313244'
-base = '#1e1e2e'
-mantle = '#181825'
-crust = '#11111b'
+# ===== SSH/Remote (only show when connected) =====
+
+[username]
+style_user = 'yellow'
+style_root = 'bold red'
+format = '[$user]($style)@'
+show_always = false
+
+[hostname]
+style = 'green'
+ssh_only = true
+format = '[$hostname]($style) '
+
+[localip]
+disabled = true
+
+[shlvl]
+disabled = true
+
+# ===== Disabled =====
+
+[os]
+disabled = true
+
+[sudo]
+disabled = true
+
+[battery]
+disabled = true
+
+[time]
+disabled = true
+
+[fill]
+disabled = true
