@@ -16,13 +16,6 @@ WINDOWS_STOW_DIRS=(starship zsh)
 # ║                      HELPER FUNCTIONS                             ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# Check bash version (requires 4.0+ for associative arrays)
-if ((BASH_VERSINFO[0] < 4)); then
-  echo "This script requires bash 4.0 or higher"
-  echo "Current version: $BASH_VERSION"
-  exit 1
-fi
-
 # Color output helpers
 print_header() { echo -e "\n\033[1;35m$1\033[0m"; }
 print_success() { echo -e "\033[1;32m✓\033[0m $1"; }
@@ -68,21 +61,22 @@ show_menu() {
 # ║                   LINUX PACKAGE HELPERS                           ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# Unified package map: Homebrew -> Linux package names
-# Works across apt, dnf, pacman, zypper (most names are identical)
-declare -A LINUX_PKG_MAP=(
-  ["bat"]="bat"
-  ["eza"]="eza"
-  ["fzf"]="fzf"
-  ["git"]="git"
-  ["lazygit"]="lazygit"
-  ["zoxide"]="zoxide"
-  ["stow"]="stow"
-  ["tmux"]="tmux"
-)
+# Package name lookup (works on all bash versions, avoids associative arrays)
+# Maps Homebrew package names to Linux equivalents
+get_linux_pkg() {
+  case "$1" in
+    bat|eza|fzf|git|lazygit|zoxide|stow|tmux) echo "$1" ;;
+    *) echo "" ;;
+  esac
+}
 
-# macOS-only packages to skip on Linux
-MACOS_ONLY_PACKAGES=("aerospace" "raycast" "appcleaner" "borders")
+# Check if package is macOS-only
+is_macos_only() {
+  case "$1" in
+    aerospace|raycast|appcleaner|borders) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 install_linux_packages() {
   local pkg_manager=$1
@@ -112,7 +106,7 @@ install_linux_packages() {
     # Handle casks - check if macOS-only
     if [[ "$line" =~ ^[[:space:]]*cask[[:space:]]+\"([^\"]+)\" ]]; then
       local cask_name="${BASH_REMATCH[1]}"
-      if printf '%s\n' "${MACOS_ONLY_PACKAGES[@]}" | grep -q "^${cask_name}$"; then
+      if is_macos_only "$cask_name"; then
         skipped_macos_packages+=("$cask_name")
       fi
       continue
@@ -125,14 +119,15 @@ install_linux_packages() {
       local brew_pkg_short="${brew_pkg##*/}"
 
       # Skip macOS-only packages
-      if printf '%s\n' "${MACOS_ONLY_PACKAGES[@]}" | grep -q "^${brew_pkg_short}$"; then
+      if is_macos_only "$brew_pkg_short"; then
         skipped_macos_packages+=("$brew_pkg")
         continue
       fi
 
       # Check if package is in our mapping
-      if [[ -n "${LINUX_PKG_MAP[$brew_pkg_short]}" ]]; then
-        local linux_pkg="${LINUX_PKG_MAP[$brew_pkg_short]}"
+      local linux_pkg
+      linux_pkg=$(get_linux_pkg "$brew_pkg_short")
+      if [[ -n "$linux_pkg" ]]; then
         if ! command -v "$brew_pkg_short" >/dev/null 2>&1; then
           packages_to_install+=("$linux_pkg")
         else
