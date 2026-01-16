@@ -118,6 +118,7 @@ alias brewup="brew update && brew upgrade"
 
 alias c="cursor"
 alias cd="z"
+alias cc="claude"
 
 alias t="tmux"
 tmux() {
