@@ -272,6 +272,42 @@ install_special_packages() {
 }
 
 # ╔══════════════════════════════════════════════════════════════════╗
+# ║                     TMUX PLUGIN SETUP                             ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+setup_tmux_plugins() {
+  print_header "Setting up tmux plugins..."
+  
+  local tpm_dir="$HOME/.config/tmux/plugins/tpm"
+  
+  # TPM should be symlinked via stow as a submodule
+  if [[ ! -d "$tpm_dir" ]]; then
+    print_error "TPM not found at $tpm_dir"
+    print_info "Ensure tmux configuration was stowed correctly"
+    return 1
+  fi
+  
+  # Check if TPM is actually usable (not just an empty directory)
+  if [[ ! -f "$tpm_dir/tpm" ]]; then
+    print_error "TPM directory exists but tpm executable not found"
+    print_info "This likely means the git submodule wasn't initialized"
+    print_info "Run: cd $DOTS_DIR && git submodule update --init --recursive"
+    return 1
+  fi
+  
+  # Install all plugins defined in tmux.conf via TPM
+  print_info "Installing tmux plugins (catppuccin, tmux-sensible, tmux-resurrect)..."
+  if "$tpm_dir/bin/install_plugins" 2>&1 | grep -q "download success\|Already installed"; then
+    print_success "tmux plugins installed successfully!"
+  else
+    print_warning "Plugin installation may have encountered issues"
+    print_info "You can manually install by opening tmux and pressing: Ctrl+a then Shift+I"
+  fi
+  
+  print_info "To use tmux with the new configuration, run: tmux"
+}
+
+# ╔══════════════════════════════════════════════════════════════════╗
 # ║                        macOS SETUP                                ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
@@ -480,6 +516,12 @@ main() {
 
   # Stow dotfiles (common to all OS)
   stow_dotfiles
+
+  # Special package installations (common to all OS)
+  install_special_packages
+
+  # Setup tmux plugins via TPM
+  setup_tmux_plugins
 
   # Final steps
   print_header "Setup complete!"

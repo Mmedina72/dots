@@ -1,0 +1,4 @@
+# Let TPM manage all plugins except TPM itself
+plugins/*
+!plugins/tpm/
+!.gitignore
