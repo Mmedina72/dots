@@ -120,6 +120,7 @@ alias brewup="brew update && brew upgrade"
 alias c="cursor"
 alias cd="z"
 alias cc="claude"
+alias oc="opencode"
 
 alias t="tmux"
 tmux() {
@@ -159,3 +160,8 @@ _fzf_comprun() {
     *)            fzf --preview "$show_file_or_dir_preview" "$@" ;;
   esac
 }
+
+# Auto-start tmux
+if command -v tmux &> /dev/null && [ -z "$TMUX" ] && [[ $- == *i* ]]; then
+    tmux new-session -A -s session
+fi
