@@ -8,7 +8,7 @@ set -e
 DOTS_DIR="$HOME/dots"
 
 # OS-specific stow directories
-MACOS_STOW_DIRS=(aerospace starship tmux wezterm zsh)
+MACOS_STOW_DIRS=(aerospace ghostty starship tmux wezterm zsh)
 LINUX_STOW_DIRS=(starship tmux zsh)
 WINDOWS_STOW_DIRS=(starship zsh)
 

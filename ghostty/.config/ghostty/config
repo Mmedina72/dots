@@ -1,0 +1,30 @@
+# Font
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 16
+font-thicken = true
+
+# Theme
+theme = Catppuccin Mocha
+
+# Window
+background-opacity = 0.90
+window-padding-x = 12
+window-padding-y = 8
+window-decoration = true
+
+# Cursor
+cursor-style = block
+cursor-style-blink = true
+
+# Shell integration
+shell-integration = zsh
+
+# macOS specific
+macos-titlebar-style = hidden
+macos-option-as-alt = true
+window-save-state = always
+
+# Misc
+confirm-close-surface = false
+copy-on-select = clipboard
+mouse-hide-while-typing = true
